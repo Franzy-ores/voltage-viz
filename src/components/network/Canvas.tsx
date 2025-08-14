@@ -5,10 +5,12 @@ interface CanvasProps {
   project: Project;
   selectedTool: 'select' | 'supply' | 'load' | 'pv' | 'cable';
   selectedNodeId: string | null;
+  selectedEdgeId?: string | null;
   onNodeAdd: (type: NodeType, position: { x: number; y: number }) => void;
   onNodeSelect: (nodeId: string | null) => void;
   onNodeDelete: (nodeId: string) => void;
   onEdgeAdd: (fromNodeId: string, toNodeId: string) => void;
+  onEdgeSelect?: (edgeId: string | null) => void;
   onEdgeDelete: (edgeId: string) => void;
   onEdgeUpdate: (edgeId: string, updates: any) => void;
 }
@@ -17,10 +19,12 @@ export const Canvas = ({
   project,
   selectedTool,
   selectedNodeId,
+  selectedEdgeId,
   onNodeAdd,
   onNodeSelect,
   onNodeDelete,
   onEdgeAdd,
+  onEdgeSelect,
   onEdgeDelete
 }: CanvasProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -134,12 +138,14 @@ export const Canvas = ({
                 x2={toNode.position.x}
                 y2={toNode.position.y}
                 stroke={edgeColor}
-                strokeWidth="3"
+                strokeWidth={selectedEdgeId === edge.id ? "5" : "3"}
                 className="cursor-pointer hover:stroke-width-4"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (selectedTool === 'select') {
-                    onEdgeDelete(edge.id);
+                    if (onEdgeSelect) {
+                      onEdgeSelect(selectedEdgeId === edge.id ? null : edge.id);
+                    }
                   }
                 }}
               />

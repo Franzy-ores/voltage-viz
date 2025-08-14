@@ -3,6 +3,7 @@ import { Sidebar } from "./network/Sidebar";
 import { Canvas } from "./network/Canvas";
 import { TopBar } from "./network/TopBar";
 import { NodePropertiesPanel } from "./network/NodePropertiesPanel";
+import { EdgePropertiesPanel } from "./network/EdgePropertiesPanel";
 import { toast } from "sonner";
 
 export type NodeType = 'supply' | 'load' | 'pv' | 'mixed';
@@ -53,30 +54,30 @@ export interface Project {
 
 const defaultCableTypes: CableType[] = [
   {
-    id: 'cu-25',
-    name: 'Cuivre 25mm²',
-    r12: 0.727,
-    x12: 0.08,
-    r0: 2.18,
-    x0: 0.32,
-    material: 'Cuivre'
+    id: 'baxb-95',
+    name: 'BAXB 95',
+    r12: 0.383,
+    x12: 0.104,
+    r0: 2.379,
+    x0: 0.263,
+    material: 'Aluminium'
   },
   {
-    id: 'cu-35',
-    name: 'Cuivre 35mm²',
-    r12: 0.524,
-    x12: 0.08,
-    r0: 1.57,
-    x0: 0.32,
-    material: 'Cuivre'
+    id: 'baxb-150',
+    name: 'BAXB 150',
+    r12: 0.244,
+    x12: 0.098,
+    r0: 1.805,
+    x0: 0.258,
+    material: 'Aluminium'
   },
   {
-    id: 'al-50',
-    name: 'Aluminium 50mm²',
-    r12: 0.641,
-    x12: 0.08,
-    r0: 1.92,
-    x0: 0.32,
+    id: 'eaxecwb-4x150',
+    name: 'EAXeCWB 4x150',
+    r12: 0.242,
+    x12: 0.069,
+    r0: 0.972,
+    x0: 0.273,
     material: 'Aluminium'
   }
 ];
@@ -92,6 +93,7 @@ export const ElectricalNetworkCalculator = () => {
   });
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [selectedTool, setSelectedTool] = useState<'select' | 'supply' | 'load' | 'pv' | 'cable'>('select');
 
   const addNode = (type: NodeType, position: { x: number; y: number }) => {
@@ -218,6 +220,7 @@ export const ElectricalNetworkCalculator = () => {
   };
 
   const selectedNode = selectedNodeId ? project.nodes.find(n => n.id === selectedNodeId) : null;
+  const selectedEdge = selectedEdgeId ? project.edges.find(e => e.id === selectedEdgeId) : null;
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -239,10 +242,12 @@ export const ElectricalNetworkCalculator = () => {
             project={project}
             selectedTool={selectedTool}
             selectedNodeId={selectedNodeId}
+            selectedEdgeId={selectedEdgeId}
             onNodeAdd={addNode}
             onNodeSelect={setSelectedNodeId}
             onNodeDelete={deleteNode}
             onEdgeAdd={addEdge}
+            onEdgeSelect={setSelectedEdgeId}
             onEdgeDelete={deleteEdge}
             onEdgeUpdate={updateEdge}
           />
@@ -253,6 +258,15 @@ export const ElectricalNetworkCalculator = () => {
               cableTypes={project.cableTypes}
               onNodeUpdate={updateNode}
               onClose={() => setSelectedNodeId(null)}
+            />
+          )}
+          
+          {selectedEdge && (
+            <EdgePropertiesPanel
+              edge={selectedEdge}
+              cableTypes={project.cableTypes}
+              onEdgeUpdate={updateEdge}
+              onClose={() => setSelectedEdgeId(null)}
             />
           )}
         </div>
