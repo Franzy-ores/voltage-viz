@@ -52,6 +52,31 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				status: {
+					compliant: 'hsl(var(--status-compliant))',
+					warning: 'hsl(var(--status-warning))',
+					critical: 'hsl(var(--status-critical))'
+				},
+				tech: {
+					'50': 'hsl(var(--tech-gray-50))',
+					'100': 'hsl(var(--tech-gray-100))',
+					'200': 'hsl(var(--tech-gray-200))',
+					'300': 'hsl(var(--tech-gray-300))',
+					'400': 'hsl(var(--tech-gray-400))',
+					'500': 'hsl(var(--tech-gray-500))',
+					'600': 'hsl(var(--tech-gray-600))'
+				},
+				canvas: {
+					bg: 'hsl(var(--canvas-bg))',
+					grid: 'hsl(var(--grid-lines))',
+					selection: 'hsl(var(--selection))'
+				},
+				electrical: {
+					supply: 'hsl(var(--supply-node))',
+					load: 'hsl(var(--load-node))',
+					pv: 'hsl(var(--pv-node))',
+					cable: 'hsl(var(--cable-line))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
