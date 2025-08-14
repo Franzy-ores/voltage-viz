@@ -97,6 +97,12 @@ export const ElectricalNetworkCalculator = () => {
   const [selectedTool, setSelectedTool] = useState<'select' | 'supply' | 'load' | 'pv' | 'cable'>('select');
 
   const addNode = (type: NodeType, position: { x: number; y: number }) => {
+    // Vérifier qu'il n'y a qu'un seul point de fourniture
+    if (type === 'supply' && project.nodes.some(node => node.type === 'supply')) {
+      toast.error("Un seul point de fourniture est autorisé");
+      return;
+    }
+
     const newNode: NetworkNode = {
       id: `node-${Date.now()}`,
       name: `${type === 'supply' ? 'Fourniture' : type === 'load' ? 'Charge' : type === 'pv' ? 'PV' : 'Mixte'} ${project.nodes.length + 1}`,
@@ -187,28 +193,94 @@ export const ElectricalNetworkCalculator = () => {
   };
 
   const calculateNetwork = () => {
-    // Implémentation du calcul de chute de tension
-    // Pour l'instant, simulation basique
-    const updatedNodes = project.nodes.map(node => {
-      const statusColors: Array<'compliant' | 'warning' | 'critical'> = ['compliant', 'warning', 'critical'];
-      const randomStatus = statusColors[Math.floor(Math.random() * statusColors.length)];
-      
-      return {
-        ...node,
-        voltage: node.type === 'supply' 
-          ? (project.voltageType === '400V' ? 400 : 230)
-          : Math.random() * 20 + (project.voltageType === '400V' ? 380 : 220),
-        current: Math.random() * 50 + 10,
-        statusColor: Math.random() > 0.7 ? 'warning' : 'compliant' as 'compliant' | 'warning' | 'critical'
-      };
+    // Vérifier qu'il y a un point de fourniture
+    const supplyNode = project.nodes.find(node => node.type === 'supply');
+    if (!supplyNode) {
+      toast.error("Un point de fourniture est requis pour le calcul");
+      return;
+    }
+
+    // Calcul cumulatif de chute de tension depuis la source
+    const calculatedNodes = new Map<string, NetworkNode>();
+    const calculatedEdges = new Map<string, NetworkEdge>();
+    
+    // Initialiser le nœud de fourniture
+    calculatedNodes.set(supplyNode.id, {
+      ...supplyNode,
+      voltage: project.voltageType === '400V' ? 400 : 230,
+      statusColor: 'compliant'
     });
 
-    const updatedEdges = project.edges.map(edge => ({
-      ...edge,
-      current: Math.random() * 30 + 5,
-      voltageDropPercent: Math.random() * 8 + 1,
-      statusColor: Math.random() > 0.8 ? 'critical' : 'compliant' as 'compliant' | 'warning' | 'critical'
-    }));
+    // Fonction récursive pour calculer la chute de tension
+    const calculatePath = (nodeId: string, currentVoltage: number) => {
+      const connectedEdges = project.edges.filter(edge => 
+        edge.fromNodeId === nodeId || edge.toNodeId === nodeId
+      );
+
+      connectedEdges.forEach(edge => {
+        const nextNodeId = edge.fromNodeId === nodeId ? edge.toNodeId : edge.fromNodeId;
+        const nextNode = project.nodes.find(n => n.id === nextNodeId);
+        
+        if (!nextNode || calculatedNodes.has(nextNodeId)) return;
+
+        // Calcul de la puissance totale du nœud
+        const totalLoad = nextNode.loads.reduce((sum, load) => sum + load.kva, 0);
+        const totalPV = nextNode.pvGeneration.reduce((sum, pv) => sum + pv.kw, 0);
+        const netPower = totalLoad - totalPV;
+
+        // Calcul du courant (simplifié)
+        const current = netPower > 0 ? netPower / (currentVoltage * Math.sqrt(3)) * 1000 : 0;
+        
+        // Calcul de la chute de tension
+        const cable = project.cableTypes.find(c => c.id === edge.cableTypeId);
+        const resistance = cable ? cable.r12 * edge.length / 1000 : 0.1; // Ω
+        const voltageDrop = current * resistance * Math.sqrt(3);
+        const voltageDropPercent = (voltageDrop / currentVoltage) * 100;
+        
+        const newVoltage = currentVoltage - voltageDrop;
+        const nominalVoltage = project.voltageType === '400V' ? 400 : 230;
+        const voltageDeviationPercent = Math.abs((newVoltage - nominalVoltage) / nominalVoltage) * 100;
+        
+        // Déterminer le statut selon EN 50160 (±10%)
+        let statusColor: 'compliant' | 'warning' | 'critical';
+        if (voltageDeviationPercent <= 7) {
+          statusColor = 'compliant';
+        } else if (voltageDeviationPercent <= 10) {
+          statusColor = 'warning';
+        } else {
+          statusColor = 'critical';
+        }
+
+        // Sauvegarder les résultats
+        calculatedNodes.set(nextNodeId, {
+          ...nextNode,
+          voltage: newVoltage,
+          current,
+          statusColor
+        });
+
+        calculatedEdges.set(edge.id, {
+          ...edge,
+          current,
+          voltageDropPercent,
+          statusColor: voltageDropPercent > 5 ? 'critical' : voltageDropPercent > 3 ? 'warning' : 'compliant'
+        });
+
+        // Continuer récursivement
+        calculatePath(nextNodeId, newVoltage);
+      });
+    };
+
+    // Démarrer le calcul depuis le point de fourniture
+    calculatePath(supplyNode.id, calculatedNodes.get(supplyNode.id)!.voltage!);
+
+    // Mettre à jour le projet avec les résultats
+    const updatedNodes = project.nodes.map(node => 
+      calculatedNodes.get(node.id) || node
+    );
+    const updatedEdges = project.edges.map(edge => 
+      calculatedEdges.get(edge.id) || edge
+    );
 
     setProject(prev => ({
       ...prev,
@@ -216,7 +288,7 @@ export const ElectricalNetworkCalculator = () => {
       edges: updatedEdges
     }));
 
-    toast.success("Calcul terminé");
+    toast.success("Calcul de chute de tension terminé");
   };
 
   const selectedNode = selectedNodeId ? project.nodes.find(n => n.id === selectedNodeId) : null;
