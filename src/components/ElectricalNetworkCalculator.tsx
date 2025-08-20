@@ -129,7 +129,8 @@ export class ElectricalCalculator {
       const X_per_km = useR0 ? ct.X0_ohm_per_km : ct.X12_ohm_per_km;
 
       const denom = (isThreePhase ? Math.sqrt(3) * U : U) * this.cosPhi;
-      const current = denom > 0 ? (distalS_kVA * 1000) / denom : 0;
+      const currentSigned = denom > 0 ? (distalS_kVA * 1000) / denom : 0;
+      const current = Math.abs(currentSigned);
 
       const sinPhi = Math.sqrt(1 - this.cosPhi * this.cosPhi);
       const L_km = (cable.length_m || 0) / 1000;
@@ -139,6 +140,11 @@ export class ElectricalCalculator {
         deltaU_V = Math.sqrt(3) * current * (R_per_km * this.cosPhi + X_per_km * sinPhi) * L_km;
       } else {
         deltaU_V = current * (R_per_km * this.cosPhi + X_per_km * sinPhi) * L_km;
+      }
+
+      // ✅ inversion signe en cas d’injection
+      if (distalS_kVA < 0) {
+        deltaU_V = -deltaU_V;
       }
 
       const deltaU_percent = (deltaU_V / U) * 100;
